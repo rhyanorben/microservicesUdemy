@@ -1,0 +1,146 @@
+version: '3.4'
+
+services:
+
+  zipkin-server:
+    image: openzipkin/zipkin:2.23.2
+    ports:
+      - 9411:9411
+    restart: always
+    networks:
+      - rhyan-network
+    depends_on:
+      - rabbit-mq
+    environment:
+      RABBIT_URI: amqp://guest:guest@rabbit-mq:5672
+
+  rabbit-mq:
+    image: rabbitmq:3.8.14-management
+    ports:
+      - 5672:5672
+      - 15672:15672
+    networks:
+      - rhyan-network
+
+  cambio-db:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      TZ: America/Sao_Paulo
+      MYSQL_ROOT_PASSWORD: 123rhyan
+      MYSQL_USER: docker
+      MYSQL_PASSWORD: 123rhyan
+      MYSQL_DATABASE: cambio_service
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_TCP_PORT: 3308
+    ports:
+      - "3308:3308"
+    expose:
+      - 3308
+    networks:
+      - rhyan-network
+
+  book-db:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      TZ: America/Sao_Paulo
+      MYSQL_ROOT_PASSWORD: 123rhyan
+      MYSQL_USER: docker
+      MYSQL_PASSWORD: 123rhyan
+      MYSQL_DATABASE: book_service
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_TCP_PORT: 3310
+    ports:
+      - "3310:3310"
+    expose:
+      - 3310
+    networks:
+      - rhyan-network
+
+  cambio-service:
+    image: rhyanorben/cambio-service
+    restart: always
+    build:
+      context: .
+      dockerfile: cambio-service/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      TZ: America/Sao_Paulo
+      SPRING.ZIPKIN.BASEURL: http://zipkin-server:9411/
+      EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://naming-server:8761/eureka
+      SPRING.APPLICATION.NAME: cambio-service
+      SPRING.DATASOURCE.URL: jdbc:mysql://cambio-db:3308/cambio_service?useSSL=false&serverTimezone=UTC&enabledTLSProtocols=TLSv1.2
+      SPRING.DATASOURCE.USERNAME: root
+      SPRING.DATASOURCE.PASSWORD: 123rhyan
+      SPRING.FLYWAY.URL: jdbc:mysql://cambio-db:3308/cambio_service?useSSL=false&serverTimezone=UTC&enabledTLSProtocols=TLSv1.2
+      SPRING.FLYWAY.USER: root
+      SPRING.FLYWAY.PASSWORD: 123rhyan
+      RABBIT_URI: amqp://guest:guest@rabbit-mq:5672
+      SPRING_RABBITMQ_HOST: rabbit-mq
+      SPRING_ZIPKIN_SENDER_TYPE: rabbit
+    depends_on:
+      - naming-server
+      - cambio-db
+      - rabbit-mq
+    networks:
+      - rhyan-network
+
+  book-service:
+    image: rhyanorben/book-service
+    restart: always
+    build:
+      context: .
+      dockerfile: book-service/Dockerfile
+    ports:
+      - "8100:8100"
+    environment:
+      TZ: America/Sao_Paulo
+      SPRING.ZIPKIN.BASEURL: http://zipkin-server:9411/
+      EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://naming-server:8761/eureka
+      SPRING.APPLICATION.NAME: book-service
+      SPRING.DATASOURCE.URL: jdbc:mysql://book-db:3310/book_service?useSSL=false&serverTimezone=UTC&enabledTLSProtocols=TLSv1.2
+      SPRING.DATASOURCE.USERNAME: root
+      SPRING.DATASOURCE.PASSWORD: 123rhyan
+      SPRING.FLYWAY.URL: jdbc:mysql://book-db:3310/book_service?useSSL=false&serverTimezone=UTC&enabledTLSProtocols=TLSv1.2
+      SPRING.FLYWAY.USER: root
+      SPRING.FLYWAY.PASSWORD: 123rhyan
+      RABBIT_URI: amqp://guest:guest@rabbit-mq:5672
+      SPRING_RABBITMQ_HOST: rabbit-mq
+      SPRING_ZIPKIN_SENDER_TYPE: rabbit
+    depends_on:
+      - naming-server
+      - book-db
+      - rabbit-mq
+    networks:
+      - rhyan-network
+
+  naming-server:
+    image: rhyanorben/naming-server:0.0.1-SNAPSHOT
+    ports:
+      - 8761:8761
+    networks:
+      - rhyan-network
+
+  api-gateway:
+    image: rhyanorben/api-gateway:0.0.1-SNAPSHOT
+    ports:
+      - 8765:8765
+    depends_on:
+      - naming-server
+      - rabbit-mq
+    environment:
+      SPRING.ZIPKIN.BASEURL: http://zipkin-server:9411/
+      EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://naming-server:8761/eureka
+      RABBIT_URI: amqp://guest:guest@rabbit-mq:5672
+      SPRING_RABBITMQ_HOST: rabbit-mq
+      SPRING_ZIPKIN_SENDER_TYPE: rabbit
+    networks:
+      - rhyan-network
+
+networks:
+  rhyan-network:
+    driver: bridge
