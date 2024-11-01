@@ -23,6 +23,23 @@ jobs:
         with:
           java-version: '17'
           distribution: 'adopt'
-      - name: Eureka Naming Server Container Image
+          
+      - name: Build Eureka Naming Server Container Image
         working-directory: ./firstProject/naming-server
         run: mvn spring-boot:build-image -DskipTests
+
+      - name: Build API Gateway Container Image
+        working-directory: ./firstProject/api-gateway
+        run: mvn spring-boot:build-image -DskipTests
+
+      - name: Build Cambio Microservice
+        working-directory: ./firstProject/cambio-service
+        run: mvn clean package -DskipTests
+
+      - name: Build Book Microservice
+        working-directory: ./firstProject/book-service
+        run: mvn clean package -DskipTests
+
+      - name: Build Docker Compose
+        working-directory: ./firstProject
+        run: docker compose build
