@@ -61,7 +61,7 @@ services:
       - rhyan-network
 
   cambio-service:
-    image: rhyanorben/cambio-service
+    image: rhyanorben/cambio-service:latest
     restart: always
     ports:
       - "8000:8000"
@@ -87,7 +87,7 @@ services:
       - rhyan-network
 
   book-service:
-    image: rhyanorben/book-service
+    image: rhyanorben/book-service:latest
     restart: always
     ports:
       - "8100:8100"
@@ -113,14 +113,14 @@ services:
       - rhyan-network
 
   naming-server:
-    image: rhyanorben/naming-server:0.0.1-SNAPSHOT
+    image: rhyanorben/naming-server:latest
     ports:
       - 8761:8761
     networks:
       - rhyan-network
 
   api-gateway:
-    image: rhyanorben/api-gateway:0.0.1-SNAPSHOT
+    image: rhyanorben/api-gateway:latest
     ports:
       - 8765:8765
     depends_on:
